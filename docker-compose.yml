@@ -1,0 +1,101 @@
+# docker-compose.yml — Phase 1 Infrastructure
+#
+# NOTE: This project REUSES existing bare-metal services where possible
+# to save RAM/disk (audited 2026-08-27):
+#   - Ollama  → already running on host at http://localhost:11434
+#   - Qdrant  → already running as standalone container at http://localhost:6333
+#
+# The ONLY new containerized infrastructure this project needs:
+#   - Phoenix (observability / tracing backend)
+#
+# FastAPI backend and React frontend run LOCALLY (not containerized)
+# during development, for fast iteration and lower RAM overhead.
+
+services:
+  # ------------------------------------------------------------------
+  # Phoenix — AI Observability Backend
+  # Collects OpenTelemetry traces + evals from the FastAPI backend.
+  # Web UI: http://localhost:6006
+  # ------------------------------------------------------------------
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      # host:container — host 6006 is what the browser/FastAPI uses.
+      # Phoenix's gRPC/OTLP collector listens on 4317 internally,
+      # but its web UI (and OTEL http receiver) is on 6006.
+      - "6006:6006"
+    volumes:
+      # named volume → trace/span/experiment data survives container restarts
+      - phoenix_data:/phoenix/data
+    environment:
+      - PHOENIX_PORT=6006
+      - PHOENIX_WORKING_DIR=/phoenix/data
+      - PHOENIX_RUNTIME=container
+    healthcheck:
+      # Healthcheck tells compose when Phoenix is ACTUALLY ready,
+      # not just "container process started". Prevents the backend
+      # from connecting before it can serve requests.
+      #
+      # CRITICAL: Phoenix's image has NO shell/curl/wget (minimal Python
+      # image). Must use Python's urllib, which IS present.
+      test: ["CMD", "/usr/bin/python3.13", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:6006/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    # Even though it's the only service, defining a named network keeps
+    # the door open to add FastAPI as a container later without port
+    # collisions with host-based services.
+    networks:
+      - app-network
+
+  # ------------------------------------------------------------------
+  # PostgreSQL — Relational Database (Data Tier, Phase 3.5)
+  # Stores ALL structured data: users, documents, predictions, audit
+  # logs, model registry. This replaces the in-memory MOCK_USERS dict.
+  #
+  # WHY add it to compose: it's a NEW service this project needs, unlike
+  # Qdrant/Ollama which already run standalone on the host. Compose gives
+  # us reproducible infra + a named volume so data survives restarts.
+  #   - host 5432 = what the FastAPI backend (running locally) connects to
+  #   - POSTGRES_* env vars define the initial superuser + database
+  # ------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-medassist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-medassist_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-medassist}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready is Postgres' built-in readiness probe (no shell needed).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medassist} -d ${POSTGRES_DB:-medassist}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# ------------------------------------------------------------------
+# Named volumes — Docker stores these on the host at a path it manages.
+# They persist across `docker compose down` (data NOT deleted).
+# ------------------------------------------------------------------
+volumes:
+  phoenix_data:
+  postgres_data:
+
+# ------------------------------------------------------------------
+# Custom bridge network — isolates our containers' comms from the host's
+# default bridge. Services reach each other by SERVICE NAME (e.g. "phoenix").
+# ------------------------------------------------------------------
+networks:
+  app-network:
+    driver: bridge

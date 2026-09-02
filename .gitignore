@@ -1,0 +1,29 @@
+# --- Secrets ---
+.env
+
+# --- Uploaded content & runtime data ---
+data/pdfs/
+data/*.db
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.log
+
+# --- IDE ---
+.vscode/
+.idea/
