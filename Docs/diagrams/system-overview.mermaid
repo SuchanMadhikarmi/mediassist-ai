@@ -1,0 +1,44 @@
+flowchart TB
+    subgraph Tier1["PRESENTATION TIER - React (Vite) :5173"]
+        UI["Role-based UI<br/>Admin / Expert / End User"]
+        DASH["Dashboards<br/>stats + audit + predictions"]
+        CHAT["ChatWindow<br/>SSE token streaming + HITL card"]
+        MLFORM["PredictForecast form"]
+    end
+
+    subgraph Tier2["APPLICATION TIER - FastAPI :8000"]
+        API["REST API + SSE<br/>/api/* /chat /chat/stream /ingest"]
+        AUTH["AuthN: JWT access/refresh<br/>bcrypt + RBAC deps"]
+        CRAG["CRAG Agent (LangGraph)<br/>retrieve - grade - generate - challenge"]
+        LLMOPS["LLMOps<br/>cache / router / breaker / telemetry"]
+        PRED["ML Inference<br/>/api/predict + logging"]
+    end
+
+    subgraph Tier3["DATA TIER"]
+        PG[("PostgreSQL<br/>users, predictions, audit,<br/>model_registry, checkpoints")]
+        QD[("Qdrant<br/>chunks + rbac_label + vectors")]
+        OLLAMA["Ollama<br/>qwen3.5:4b / llama3.1:8b / nomic"]
+        MLART["joblib artifacts<br/>LR + XGBoost"]
+    end
+
+    OBS["Arize Phoenix :6006<br/>(OpenTelemetry traces)"]
+
+    UI --> DASH & CHAT & MLFORM
+    DASH & CHAT & MLFORM --> |"Vite proxy /api /chat"| API
+
+    API --> AUTH
+    API --> CRAG
+    API --> LLMOPS
+    API --> PRED
+
+    CRAG --> |"hybrid search + RRF + rerank"| QD
+    CRAG --> |"LLM calls"| OLLAMA
+    CRAG --> |"HITL checkpoints"| PG
+    CRAG --> |"ERP tool (orders)"| PG
+    LLMOPS --> OLLAMA
+    PRED --> MLART
+    PRED --> |"log each prediction"| PG
+
+    API -.->|"auto-traced"| OBS
+    CRAG -.->|"business spans"| OBS
+    LLMOPS -.->|"model/latency spans"| OBS

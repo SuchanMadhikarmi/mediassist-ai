@@ -1,0 +1,27 @@
+flowchart LR
+    subgraph TRAIN["OFFLINE TRAINING (ml/train.py)"]
+        DS["bank-full.csv<br/>45,211 rows, 88/12 imbalanced"]
+        SPLIT["stratified 70/15/15<br/>train / val / test"]
+        PRE["preprocessor fitted on TRAIN only"]
+        SMOTE["SMOTE on TRAIN only"]
+        LR["Logistic Regression<br/>(baseline)"]
+        XGB["XGBoost"]
+        EVAL["evaluate on untouched TEST set<br/>AUC, PR/F1, confusion matrix"]
+        ART["joblib artifacts<br/>models/*.pkl"]
+    end
+
+    subgraph REGISTRY["MODEL REGISTRY (PostgreSQL)"]
+        REG["model_name, is_active, metrics,<br/>hyperparams, trained_at, data_hash"]
+    end
+
+    subgraph INFER["ONLINE INFERENCE (/api/predict)"]
+        REQ["POST input data"] --> VAL["Pydantic validation<br/>(422 gate)"]
+        VAL --> LOAD["lazy-load ACTIVE model"]
+        LOAD --> OUT["output + confidence + model_version"]
+        OUT --> LOG["log to predictions + audit_log<br/>(user, ts, ms, version)"]
+    end
+
+    DS --> SPLIT --> PRE --> SMOTE --> LR & XGB --> EVAL
+    EVAL --> ART
+    ART --> REG
+    REG -. "is_active -&gt; xgboost" .-> LOAD

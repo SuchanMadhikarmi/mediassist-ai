@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Base: the clinical screen. Cool grey-green paper, pressure-print
+   ink, hairline rules. No warm cream, no soft-drop-shadow floats.
+   ============================================================ */
+@layer base {
+  html {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+  /* Visible keyboard focus everywhere — real a11y. */
+  :focus-visible {
+    outline: 2px solid #B4530B;
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: #B4530B;
+    color: #fff;
+  }
+}
+
+/* ============================================================
+   Shared components. Every screen uses these classes, so the whole
+   app inherits the instrument look from one place.
+   ============================================================ */
+@layer components {
+  .card {
+    @apply bg-panel border border-hairline p-5;
+    /* flat, ruled instrument panel — deliberately no large radius,
+       no soft drop-shadow */
+    border-radius: 0;
+  }
+
+  .btn-primary {
+    @apply bg-ink text-paper font-medium border border-ink
+      px-4 py-2 transition-colors disabled:opacity-50
+      disabled:cursor-not-allowed active:bg-iodine-700;
+    border-radius: 0;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-iodine-600 border-iodine-600;
+  }
+
+  .btn-ghost {
+    @apply text-muted border border-transparent px-3 py-1.5
+      text-sm transition-colors disabled:opacity-40;
+    border-radius: 0;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply text-ink border-hairline bg-white;
+  }
+
+  .input {
+    @apply w-full bg-white border border-slate-300 px-3 py-2
+      transition-colors focus:outline-none focus:ring-0 hover:border-slate-400;
+    border-radius: 0;
+  }
+  .input:focus {
+    @apply border-iodine-600;
+    box-shadow: 0 0 0 2px #B4530B;
+  }
+
+  .field-label {
+    @apply block text-sm font-medium text-muted mb-1;
+  }
+
+  /* Page hero — the framed header every main screen gets: a small iodine
+     eyebrow over a serif title and a hairline rule. This one class lifts
+     every view without per-screen markup. */
+  .page-header {
+    @apply mb-6 pb-5 border-b border-hairline;
+  }
+  .page-eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.18em] text-iodine-600 mb-1;
+  }
+  .page-title {
+    @apply serif-title text-3xl text-ink leading-tight;
+  }
+  .page-sub {
+    @apply text-sm text-muted mt-1 max-w-2xl;
+  }
+
+  /* Long alert/citation text must never push out of its box. */
+  .wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Table frame: uppercase micro-header + hover row (the "reading the
+     chart" feel). Applied to every data table via <tr class="thead">. */
+  .thead th {
+    @apply py-2 pr-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap;
+  }
+  .tbody tr {
+    @apply transition-colors hover:bg-paper/70;
+  }
+
+  /* The auth/hero tick ruler — the "instrument finding its reading"
+     motif carried from the landing page. */
+  .ruler {
+    height: 14px;
+    border-bottom: 1px solid #D8DED8;
+    background-image: repeating-linear-gradient(
+      90deg,
+      #D8DED8 0 1px,
+      transparent 1px 47px,
+      #1A241F 47px 48px,
+      transparent 48px 96px
+    );
+  }
+}
+
+/* Opt-in heading font: printed chart titles. Applied to page-level
+   headings and card titles via .serif-title (dense data labels stay sans). */
+.serif-title {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+}

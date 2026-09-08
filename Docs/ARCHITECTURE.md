@@ -2,6 +2,17 @@
 
 > **MediAssist AI** — A Multi-Tier AI-Powered Clinical Support System with RAG-Based Document Query and Machine Learning Prediction
 
+## Documentation index
+
+| Doc | When to read it |
+|-----|-----------------|
+| `README.md` (repo root) | How to run the whole system |
+| `Docs/PERMISSION_MATRIX.md` | Who can do what — enforced RBAC matrix |
+| `Docs/ML_EVALUATION.md` | Model comparison, real metrics, bias discussion |
+| `Docs/SECURITY.md` | JWT / PII / RBAC / HITL / audit controls |
+| `Docs/LEARNING_COMPANION.md` | Concepts + reusable patterns |
+| `Docs/diagrams/*.mermaid` | Architecture as code (render on GitHub) |
+
 ## What Are We Actually Building?
 
 We're building an **internal AI assistant plus a machine-learning prediction service** for a company that sells WebPOS (Web-based Point of Sale) systems to clinics and hospitals. Think of it like an internal ChatGPT **that also predicts client behavior**. The system has two distinct AI engines:

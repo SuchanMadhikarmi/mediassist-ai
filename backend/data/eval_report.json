@@ -1,0 +1,68 @@
+[
+  {
+    "id": "rag_error_4012",
+    "kind": "rag",
+    "status": "PASS",
+    "ms": 106501,
+    "sources": 1,
+    "answer": "Error Code 4012 indicates that a payment transaction was declined by the payment processor. Common causes incl",
+    "reasons": [
+      "judge 5/5 grounded=True"
+    ],
+    "soft": false
+  },
+  {
+    "id": "cache_after_rag",
+    "kind": "cache",
+    "status": "PASS",
+    "ms": 2094,
+    "sources": 1,
+    "answer": "Error Code 4012 indicates that a payment transaction was declined by the payment processor. Common causes incl",
+    "reasons": [],
+    "soft": false
+  },
+  {
+    "id": "fallback_gibberish",
+    "kind": "fallback",
+    "status": "PASS",
+    "ms": 519,
+    "sources": 0,
+    "answer": "I could not find relevant information about that in the available documents. Please try rephrasing your questi",
+    "reasons": [],
+    "soft": false
+  },
+  {
+    "id": "tool_erp_status",
+    "kind": "tool",
+    "status": "WARN",
+    "ms": 319,
+    "sources": 0,
+    "answer": "I could not find relevant information about that in the available documents. Please try rephrasing your questi",
+    "reasons": [
+      "answer/sources missing 'ORD-1004'",
+      "expected the ERP tool path, got a fallback answer",
+      "tool path NOT exercised (fell to fallback)"
+    ],
+    "soft": true
+  },
+  {
+    "id": "hitl_delete_orders",
+    "kind": "hitl",
+    "status": "PASS",
+    "ms": 343,
+    "sources": 0,
+    "answer": "answered (graph resumed)",
+    "reasons": [],
+    "soft": false
+  },
+  {
+    "id": "hitl_reject_refund",
+    "kind": "hitl",
+    "status": "PASS",
+    "ms": 77,
+    "sources": 0,
+    "answer": "\u274c Action not executed. A human did not approve this dangerous action. If you believe this is a mistake, contac",
+    "reasons": [],
+    "soft": false
+  }
+]

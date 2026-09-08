@@ -1,0 +1,26 @@
+flowchart TB
+    START["User asks a question<br/>(POST /chat or /chat/stream)"] --> AUTH{"JWT valid?"}
+    AUTH -- no --> 401["401 / login"]
+    AUTH -- yes --> CACHE{"Semantic cache hit?"}
+    CACHE -- yes --> CCR["Instant cached answer<br/>(namespaced by role)"]
+    CACHE -- no --> HITL{"Dangerous action?<br/>(keyword gate)"}
+    HITL -- yes --> INT["interrupt() pause<br/>+ Postgres checkpoint"]
+    INT --> 409["HTTP 409 needs_approval<br/>+ thread_id"]
+    409 --> RESUME["Human reviews via /chat/resume"]
+    RESUME -- approve --> GO
+    RESUME -- reject --> BLOCK["Safe refusal - no generation"]
+    HITL -- no --> GO["proceed"]
+
+    GO --> RET["Hybrid retrieve<br/>dense (nomic) + BM25 -> RRF -> cross-encoder top5"]
+    RET --> GD{"Docs relevant?"}
+    GD -- no --> REF["Reformulate query"] --> RET
+    GD -- yes --> SUF{"Docs sufficient?"}
+    SUF -- no --> TOOL["ERP tool: query_erp(ORD-xxxx) -> live status"]
+    SUF -- yes --> GEN
+    TOOL --> GEN["generate (LLM answers, PII-redacted ctx, cited)"]
+    GEN --> FTH{"Answer faithful?<br/>LLM-as-judge"}
+    FTH -- no, retries left --> GEN
+    FTH -- yes --> FILL{"Real answer & no tool?"}
+    FILL -- yes --> CSTORE["cache.store"]
+    FILL -- no --> DONE["emit answer + sources<br/>(SSE tokens if streaming)"]
+    CSTORE --> DONE

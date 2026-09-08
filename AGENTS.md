@@ -47,15 +47,24 @@ A company that sells WebPOS/ERP systems to clinics and hospitals needs:
 - **ML Pipeline:** Bank Marketing dataset → Logistic Regression (baseline) + XGBoost → joblib artifacts → inference endpoint → PostgreSQL prediction log
 
 ## Current Status
+- **READ `Docs/PROGRESS.md` FIRST every session** — it is the authoritative
+  continuation log: where we are, what's left, and the exact teaching methodology.
 - **Phase 0: COMPLETED** — Architecture docs written
 - **Phase 1: COMPLETED** — Infrastructure running
 - **Phase 2: COMPLETED** — Backend foundation running
 - **Phase 3: COMPLETED** — Enterprise Security (JWT + PII + RBAC)
 - **Phase 4: COMPLETED** — Ingestion (PDF → Qdrant)
 - **Phase 5: COMPLETED** — Retrieval (Hybrid Search + RRF + re-ranking)
-- **Phase 3.5: COMPLETED** — PostgreSQL + SQLAlchemy + ORM Models (5 tables: users, documents, predictions, audit_log, model_registry). Alembic migration applied, seed script run, /health shows postgres:up
-- **Phase 3.6: COMPLETED** — 3 Roles (admin/expert/end_user) + DB-backed registration/login/refresh + CRUD on users/documents/predictions/audit + search/filter/pagination + data-level RBAC. Endpoints under /api/auth/*, /api/users, /api/documents, /api/predictions, /api/audit
-- **Phase 6: NEXT (finish remaining ~60%)** — LangGraph TOOLS + HITL + faithfulness grading, now on top of real PostgreSQL
+- **Phase 3.5: COMPLETED** — PostgreSQL + SQLAlchemy + ORM Models (5→6 tables incl. erp_orders). Alembic migrations applied, seed script run.
+- **Phase 3.6: COMPLETED** — 3 Roles (admin/expert/end_user) + DB-backed registration/login/refresh + CRUD on users/documents/predictions/audit + search/filter/pagination + data-level RBAC. Role enum admin/expert/end_user (+viewer alias). Chat now requires JWT.
+- **Phase 6: COMPLETED** — LangGraph CRAG fully done: Step A (ERP mock tool + sufficiency grading), Step B (faithfulness grading), Step C (HITL with Postgres checkpointing via AsyncPostgresSaver + /chat/resume endpoint). Verified with stubbed LLM + API tests. Live LLM end-to-end test still pending (Ollama down).
+- **Phase 6.5: COMPLETED** — `backend/ml/` (data_loader, preprocessing, train, predictor). Real UCI `bank-full.csv` (45,211 rows, 88/12 imbalance). Pipeline: stratified 70/15/15 split → preprocessor fitted on TRAIN only → SMOTE on TRAIN only → LR (AUC 0.901) + XGBoost (AUC 0.9236, BEST). Artifacts in `backend/ml/models/`. BOTH models registered in `model_registry` (xgboost active). Detail in `Docs/PROGRESS.md` §5.6.
+- **Phase 6.6: COMPLETED** — `POST /api/predict` (JWT) + Pydantic input validation (422 gate) + dual logging (`predictions` + `audit_log`), live end-to-end verified (valid 200 → logged; invalid 422 → not logged; lazy model load = 458ms→39ms). Detail in `Docs/PROGRESS.md` §5.6.
+- **Phase 7.5: COMPLETED** — `GET /api/stats` (staff-only) aggregation endpoint: totals (predictions/users/documents/orders/models), GROUP BY breakdowns (users-by-role, predictions-by-model, predictions-by-output, audit-by-action), quality metrics (avg_confidence, avg_inference_time_ms, positive_rate), model registry with metrics, recent activity (audit JOIN user), 7-day prediction trend (`date_trunc`). Live-verified: real numbers correct, end_user → 403, auto-traced in Phoenix. Data feed for Phase 8 dashboards. Detail in `Docs/PROGRESS.md` §5.8.
+- **Phase 8: COMPLETED** — Full React frontend in `frontend/` (Vite 6 + React 18 + Tailwind 3.4, zero UI libs). Hash router + role→VIEWS RBAC map in `App.jsx`; own libs: `api.js` (fetch+JWT+401→login), `auth.js`, `sse.js` (POST-SSE via fetch ReadableStream — EventSource can't POST), `validation.js` (Pydantic parity). Screens: 3 role dashboards (AdminDashboard from `/api/stats` w/ CSS bar charts + model cards + activity + trend; UsersPane CRUD; DocsPane PDF upload; AuditPane; PredictionsTable w/ staff review + search/pagination; PredictForecast 16-field ML form; ChatWindow w/ live token streaming + citations + HITL approval card). Vite proxy `/api`,`/chat`,`/ingest`,`/health`→:8000. Verified: build + proxy login/stats + SSE first-frame through proxy. Open http://localhost:5173 (admin/admin123, expert1/expert123, nurse1/nurse123). Detail in `Docs/PROGRESS.md` §5.9.
+- **Phase 9: COMPLETED** — Eval CI/CD. CI gate = `backend/tests/` **67 headless pytest checks** (router/breaker, HITL danger, Pydantic 422-gate, SSE framing, password hashing, PII redaction) run via `.venv/bin/python -m pytest` from `backend/` (pytest 8.3.4 in requirements.txt). Quality gate = `backend/eval/` golden-set live eval: `.venv/bin/python -m eval.run_eval` logs in as admin, plays 6 cases (RAG/cache/fallback/tool/HITL approve/HITL reject) against the LIVE stack, scores 5/5 hard PASS + `judge.py` LLM-as-judge (5/5 grounded) + writes `data/eval_report.json` (exit 0 only if all hard cases pass; the ERP `tool` case is `soft` — corpus has only 2 points so it legitimately warns). `.github/workflows/ci.yml`: backend-tests + frontend-build on every push/PR; `live-eval` job is manual + self-hosted. Detail in `Docs/PROGRESS.md` §5.10.
+- **Chat endpoints paths:** `/chat` (JSON), `/chat/stream` (SSE tokens), `/chat/resume` (HITL approve/reject). NOT `/api/chat` (old PROGRESS curl examples are outdated).
+- **Ollama is UP** (restarted for Phase 7 live tests; qwen + nomic loaded). As of 2026-09-06 (night): **postgres + qdrant UP, uvicorn RUNNING on port 8000** (detached via setsid), **phoenix UP** (needed for Phase 7 Step 4), **Vite dev server RUNNING on :5173** (detached from `frontend/`), swap empty.
 - **Phase 4-5: COMPLETED** (done earlier: ingestion + hybrid retrieval)
 
 ## Phase Plan (14 phases total)
@@ -67,14 +76,14 @@ Phase 3.5: PostgreSQL + SQLAlchemy + ORM Models      ✅ DONE
 Phase 3.6: 3 Roles + Registration + CRUD             ✅ DONE
 Phase 4:   Ingestion (PDF → Qdrant)                  ✅ DONE
 Phase 5:   Retrieval (Hybrid Search + RRF)           ✅ DONE
-Phase 6:   Agentic Workflows (LangGraph CRAG)        ⬜ NEXT
-Phase 6.5: ML Training (2 models, evaluation)        🆕
-Phase 6.6: ML Inference Endpoint + Prediction Logging 🆕
-Phase 7:   LLMOps (Cache + Streaming + Phoenix)       ⬜
-Phase 7.5: Reports + Dashboard Stats                  🆕
-Phase 8:   React Frontend (3 role-based dashboards)   ⬜
-Phase 9:   Eval CI/CD                                 ⬜
-Phase 10:  Documentation + Permission Matrix          ⬜
+Phase 6:   Agentic Workflows (LangGraph CRAG)        ✅ DONE
+Phase 6.5: ML Training (2 models, evaluation)        ✅ DONE (trained + registered)
+Phase 6.6: ML Inference Endpoint + Prediction Logging ✅ DONE (live-verified)
+Phase 7:   LLMOps (Cache + Streaming + Router + Phoenix) ✅ DONE
+Phase 7.5: Reports + Dashboard Stats                  ✅ DONE (GET /api/stats)
+Phase 8:   React Frontend (3 role-based dashboards)   ✅ DONE (frontend/)
+Phase 9:   Eval CI/CD                                 ✅ DONE (via `backend/tests/` pytest 67 checks + `backend/eval/` golden-set + `judge.py` LLM-as-judge + `.github/workflows/ci.yml`)
+Phase 10:  Documentation + Permission Matrix          ✅ DONE (README.md + `Docs/PERMISSION_MATRIX.md` + `Docs/ML_EVALUATION.md` + `Docs/SECURITY.md` + `Docs/diagrams/*.mermaid` + ARCHITECTURE.md index). **ALL 10 PHASES COMPLETE.**
 ```
 
 ## RESOURCE CONSTRAINT — CRITICAL (audited 2026-08-27)
@@ -97,13 +106,14 @@ Phase 10:  Documentation + Permission Matrix          ⬜
 Phase 1-3:   DONE (Infrastructure + Backend + Security)
 Phase 3.5-3.6: DONE (PostgreSQL + 3 Roles + CRUD)
 Phase 4-5:   DONE (Ingestion + Retrieval)
-Phase 6:     LangGraph (CRAG + Tools + HITL)  ← NEXT (finish tools/HITL/faithfulness)
-Phase 6.5-6.6: ML Training + Inference
-Phase 7:     LLMOps (Cache + Streaming + Phoenix)
-Phase 7.5:   Reports + Dashboard
-Phase 8:     React Frontend
-Phase 9:     Eval CI/CD
-Phase 10:    Documentation
+Phase 6:     LangGraph (CRAG + Tools + HITL)  ✅ DONE
+Phase 6.5:   ML Training (2 models, eval, artifacts)  ✅ DONE (predictor + registry done)
+Phase 6.6:   ML Inference Endpoint + Prediction Logging  ✅ DONE (live-verified)
+Phase 7:     LLMOps (Cache + Streaming + Router + Phoenix)  ✅ DONE (Steps 1-4)
+Phase 7.5:   Reports + Dashboard Stats  ✅ DONE (GET /api/stats)
+Phase 8:     React Frontend (3 role-based dashboards)  ✅ DONE (frontend/)
+Phase 9:     Eval CI/CD  ✅ DONE (pytest 67 + golden-set eval + ci.yml)
+Phase 10:    Documentation  ✅ DONE (README + permission/RBAC + ML eval + security + mermaid diagrams) — ALL PHASES COMPLETE
 ```
 
 ## Current Running State (as of 2026-08-27)

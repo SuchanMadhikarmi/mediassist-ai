@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import SessionLocal, engine, Base  # noqa: E402
-from models import User  # noqa: E402
+from models import ErpOrder, User  # noqa: E402
 from security.auth import hash_password  # noqa: E402
 from security.models import Role  # noqa: E402
 
@@ -40,6 +40,16 @@ MOCK_USERS = [
         "password": "nurse123",
         "role": Role.END_USER.value,
     },
+]
+
+# Mock "live" ERP orders the agent's tool can query (Phase 6 tool calling).
+# The 'status' field is what staff would ask about ("what's the status of order X?").
+MOCK_ERP_ORDERS = [
+    {"order_number": "ORD-1001", "customer_name": "Sunrise Clinic", "status": "delivered", "amount": 2999.0, "product": "WebPOS Pro License"},
+    {"order_number": "ORD-1002", "customer_name": "Greenfield Hospital", "status": "shipped", "amount": 4999.0, "product": "ERP Enterprise"},
+    {"order_number": "ORD-1003", "customer_name": "Oak Tree Medical", "status": "failed", "amount": 1499.0, "product": "Billing Module"},
+    {"order_number": "ORD-1004", "customer_name": "Blue River Clinic", "status": "pending", "amount": 899.0, "product": "Scheduling Add-on"},
+    {"order_number": "ORD-1005", "customer_name": "Redwood Health", "status": "cancelled", "amount": 1999.0, "product": "Inventory Module"},
 ]
 
 
@@ -66,6 +76,15 @@ def seed() -> None:
                 )
             )
             print(f"  + created {u['username']} ({u['role']})")
+
+        for o in MOCK_ERP_ORDERS:
+            exists = db.query(ErpOrder).filter(ErpOrder.order_number == o["order_number"]).first()
+            if exists:
+                print(f"  - skip order {o['order_number']} (already exists)")
+                continue
+            db.add(ErpOrder(**o))
+            print(f"  + created order {o['order_number']} ({o['status']})")
+
         db.commit()
         print("Seed complete.")
     finally:

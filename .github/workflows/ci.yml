@@ -1,0 +1,92 @@
+# ============================================================
+# .github/workflows/ci.yml
+# Phase 9 — CI/CD for MediAssist AI.
+#
+# THE TWO-GATE MODEL (the reusable pattern):
+#
+#   GATE 1 — CI (runs on EVERY push/PR, cheap, blocks merges):
+#     · unit:    deterministic pytest suite (backend/tests) — no Docker,
+#                no Ollama, no DB. If a PR breaks the HITL gate, the
+#                circuit breaker, or the PII redactor → RED.
+#     · frontend: production build must compile (TypeScript-free Vite).
+#     These two prove the CODE is coherent in seconds and free.
+#
+#   GATE 2 — Eval (on demand, needs the REAL stack):
+#     · Runs the golden set against the LIVE system (Ollama + Qdrant +
+#       Postgres + FastAPI). GH-hosted runners have none of those, so
+#       this job is `runs-on: self-hosted` and only triggered manually
+#       (workflow_dispatch) — e.g. before trusting a model/prompt
+#       change. Its pass rate is the "quality report" that GATE 1's
+#       deterministic tests cannot provide.
+#
+# Pattern: the continuous integration job is what BLOCKS bad code;
+# the eval job is what VERIFIES good behavior. Learn both shapes.
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+
+  # ───────────────────────────── GATE 1 · backend ─────────────
+  backend-tests:
+    name: Backend unit tests (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies (incl. pytest)
+        run: pip install -r requirements.txt
+      - name: Run deterministic test suite (headless)
+        run: python -m pytest
+
+  # ───────────────────────────── GATE 1 · frontend ────────────
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Production build
+        run: npm run build
+
+  # ───────────────────────────── GATE 2 · live eval ───────────
+  # NOT run on GH-hosted runners (Ollama/Qdrant/Postgres/FastAPI live
+  # on the dev machine). Trigger manually: Actions → CI → Run workflow.
+  live-eval:
+    name: Live golden-set eval
+    runs-on: self-hosted          # your dev box with the full stack UP
+    needs: [backend-tests]
+    if: github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run golden-set eval against the live system
+        run: |
+          python -m eval.run_eval --no-judge
+      - name: Upload eval report as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval_report
+          path: backend/data/eval_report.json

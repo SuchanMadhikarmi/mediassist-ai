@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediAssist AI — reads first, asks before it acts</title>
+  <meta name="description" content="A clinical decision-support system. It retrieves from your own documents, predicts with a confidence score, and pauses for a human before any dangerous action." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       MediAssist AI — landing page
+       Design tokens. Grounded in the product: clinical antisepsis.
+       ============================================================ */
+
+    :root {
+      /* Color — the amber is povidone-iodine antiseptic, not clay.
+         The paper is a cool monitor-grey-green, not warm cream.     */
+      --amber:   #B4530B;   /* iodine — what the AI recommends/acts on */
+      --amber-soft: #F2E3D0;
+      --ink:     #1A241F;   /* deep green-black, pressure-print ink     */
+      --paper:   #F4F6F3;   /* cool clinical screen                      */
+      --signal:  #C0392B;   /* alizarin — a human must approve, danger  */
+      --muted:   #6B7A72;   /* resting / secondary text                 */
+      --hairline:#D8DED8;   /* instrument tick / table rule              */
+
+      /* Type — Instrument Serif for the headline (a printed chart, an
+         instrument readout). Inter/system sans for everything else.
+         No monospace-for-looks, no tracked-out caps.                  */
+      --ff-serif: "Instrument Serif", Georgia, serif;
+      --ff-sans:  "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+
+      --step-hero: clamp(2.4rem, 6vw, 4.5rem);
+      --step-2:    clamp(1.3rem, 3vw, 1.7rem);
+      --step-1:    1.05rem;
+      --step-0:    0.95rem;
+      --step-0-5:  0.8125rem;
+
+      --leading-tight: 1.05;
+      --leading: 1.6;
+
+      --measure: 62ch;
+      --pad: clamp(1.25rem, 5vw, 4rem);
+
+      --focus: 3px solid var(--amber);
+    }
+
+    * { box-sizing: border-box; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      margin: -1px; padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: var(--ff-sans);
+      font-size: var(--step-0);
+      line-height: var(--leading);
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* Visible, keyboard focus — real a11y, everywhere */
+    :focus-visible {
+      outline: var(--focus);
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    ::selection { background: var(--amber); color: #fff; }
+
+    .skip {
+      position: absolute;
+      left: -999px;
+      top: 0;
+      background: var(--ink);
+      color: var(--paper);
+      padding: 0.75rem 1rem;
+    }
+    .skip:focus { left: 0; }
+
+    /* ============ Layout scaffolding ============ */
+    .wrap { max-width: 68rem; margin: 0 auto; padding: 0 var(--pad); }
+
+    header.site {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: color-mix(in srgb, var(--paper) 92%, transparent);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--hairline);
+    }
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem var(--pad);
+      max-width: 68rem;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+    .brand small {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    nav.site a {
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.3rem;
+      margin-left: 1.1rem;
+    }
+    nav.site a:hover { color: var(--amber); }
+    @media (max-width: 560px) { nav.site { display: none; } }
+
+    /* ============ THE ONE RISK: the hero + measuring sweep ============
+       As the page loads, a horizontal tick ruler sweeps left-to-right
+       across the headline, then "locks" onto the central claim — the way
+       an instrument finds its reading. That's the single animated moment.
+       Everything else on the page stays still.                         */
+    .hero { position: relative; padding: clamp(3rem, 10vh, 6rem) 0 4rem; overflow: hidden; }
+    .ruler {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 14px;
+      border-bottom: 1px solid var(--hairline);
+      background-image:
+        repeating-linear-gradient(90deg,
+          var(--hairline) 0 1px, transparent 1px 48px,
+          var(--ink) 48px 49px, transparent 49px 96px);
+    }
+    .ruler::after {
+      content: "";
+      position: absolute;
+      top: -3px; left: 0;
+      height: 20px; width: 3px;
+      background: var(--amber);
+      animation: sweep 1.6s cubic-bezier(.2,.6,.2,1) forwards;
+    }
+    @keyframes sweep {
+      0%   { left: 0; }
+      70%  { left: 78%; }
+      100% { left: 8%; }   /* locks onto the word "asks" */
+    }
+    .hero h1 {
+      font-family: var(--ff-serif);
+      font-weight: 400;
+      font-style: normal;
+      font-size: var(--step-hero);
+      line-height: var(--leading-tight);
+      margin: 0 0 1.5rem;
+      max-width: 16ch;
+      /* no bolded/italicized single word — the whole line carries it */
+    }
+    .hero h1 .lock { position: relative; }
+    .hero h1 .lock::after {
+      content: "";
+      position: absolute;
+      left: 0; bottom: -0.12em;
+      height: 2px; width: 100%;
+      background: var(--amber);
+      animation: lockon 1.6s cubic-bezier(.2,.6,.2,1) both .2s;
+      transform-origin: left;
+    }
+    @keyframes lockon {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+    .lede {
+      font-size: var(--step-2);
+      line-height: 1.4;
+      max-width: var(--measure);
+      color: var(--muted);
+      margin: 0 0 2rem;
+    }
+    .lede strong { color: var(--ink); font-weight: 600; }
+    .herspec {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 0 0 2.5rem;
+      font-size: var(--step-0-5);
+      color: var(--muted);
+    }
+    .herspec span { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .herspec .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); display: inline-block; }
+    .act {
+      display: inline-block;
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 0.85rem 1.6rem;
+      border: 1px solid var(--ink);
+      text-decoration: none;
+    }
+    .act:hover { background: var(--amber); border-color: var(--amber); }
+    .act .cd { display: inline-block; font-weight: 400; color: var(--paper); opacity: .7; }
+
+    /* ============ The instrument: a real prediction output ============
+       This product's actual output is a scored table + a confidence
+       gauge that the clinician reads. Show it honestly, live.        */
+    .panel { margin-top: 3.5rem; border: 1px solid var(--hairline); background: #FBFCFA; }
+    .panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--hairline);
+      color: var(--muted);
+      font-size: var(--step-0-5);
+      font-weight: 500;
+    }
+    .panel-head .pulse {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .pulse .led { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+    .measure {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0 2rem;
+      padding: 1.2rem 1rem;
+      align-items: center;
+    }
+    .measure table { width: 100%; border-collapse: collapse; font-size: var(--step-0-5); }
+    .measure th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--hairline);
+      padding: 0.4rem 0.5rem;
+    }
+    .measure td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--hairline); }
+    .measure tr:last-child td { border-bottom: 0; }
+    .measure td.score { font-weight: 600; color: var(--ink); }
+    .gauge { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .gauge .ring {
+      width: 92px; height: 92px; border-radius: 50%;
+      background: conic-gradient(var(--amber) 0 0%, var(--hairline) 0 100%);
+      display: grid; place-items: center;
+    }
+    .gauge .ring .face {
+      width: 74px; height: 74px; border-radius: 50%;
+      background: #FBFCFA;
+      display: grid; place-items: center;
+      font-family: var(--ff-serif);
+      font-size: 1.5rem;
+    }
+    .gauge small { color: var(--muted); font-size: var(--step-0-5); }
+    .note {
+      display: flex; gap: 0.9rem; align-items: flex-start;
+      padding: 0.9rem 1rem;
+      border-top: 1px solid var(--hairline);
+      background: var(--amber-soft);
+      color: var(--ink);
+      font-size: var(--step-0-5);
+      line-height: 1.5;
+    }
+    .note .tag {
+      flex: 0 0 auto;
+      background: var(--amber); color: #fff;
+      font-weight: 600; padding: 0.15rem 0.5rem;
+      font-size: 0.72rem;
+    }
+    @media (max-width: 680px) { .measure { grid-template-columns: 1fr; } .gauge { margin-top: 1rem; } }
+
+    /* ============ Disciplined content sections ============ */
+    section { padding: clamp(3rem, 7vh, 4.5rem) 0; border-top: 1px solid var(--hairline); }
+    .kicker {
+      font-size: var(--step-0-5);
+      color: var(--amber);
+      font-weight: 600;
+      margin: 0 0 0.6rem;
+      /* NOT all-caps, NOT tracked-out — capitalised only */
+    }
+    h2.sect {
+      font-family: var(--ff-serif);
+      font-weight: 400;
+      font-size: var(--step-2);
+      line-height: var(--leading-tight);
+      margin: 0 0 1.2rem;
+      max-width: 28ch;
+    }
+    p.body { max-width: var(--measure); color: var(--muted); margin: 0 0 1rem; }
+    p.body strong { color: var(--ink); font-weight: 600; }
+
+    /* Flow — three honest steps, left rail of numbered ticks (not icons) */
+    .flow { counter-reset: step; margin-top: 1.5rem; }
+    .flow .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 3rem 1fr;
+      gap: 1rem;
+      padding: 1.1rem 0;
+      border-top: 1px solid var(--hairline);
+      align-items: start;
+    }
+    .flow .step:last-child { border-bottom: 1px solid var(--hairline); }
+    .flow .step::before {
+      content: counter(step, decimal-leading-zero);
+      font-family: var(--ff-serif);
+      color: var(--amber);
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .flow .step h3 { margin: 0 0 0.25rem; font-size: 1.05rem; font-weight: 600; }
+    .flow .step p { margin: 0; color: var(--muted); font-size: var(--step-0-5); max-width: 52ch; }
+    .flow .wt {
+      color: var(--signal); text-decoration: underline;
+      text-decoration-style: dotted; text-underline-offset: 3px; font-weight: 600;
+    }
+
+    /* Verification — a real citation block, not marketing bullets */
+    .cite { margin-top: 1.5rem; border: 1px solid var(--hairline); background: #FBFCFA; }
+    .cite .row {
+      display: grid; grid-template-columns: 3.5rem 1fr; gap: 1rem; align-items: start;
+      padding: 0.9rem 1rem; border-bottom: 1px solid var(--hairline);
+    }
+    .cite .row:last-child { border-bottom: 0; }
+    .cite .row .src { font-family: var(--ff-serif); color: var(--amber); font-size: 1.1rem; }
+    .cite .row p { margin: 0; font-size: var(--step-0-5); color: var(--muted); }
+    .cite .row p b { color: var(--ink); font-weight: 600; }
+
+    /* Deference — the human-in-the-loop pause is the core promise */
+    .pause {
+      display: grid; gap: 1.25rem;
+      margin-top: 1.5rem;
+      border-left: 4px solid var(--signal);
+      padding: 1.25rem 1.5rem;
+      background: #FBF6F4;
+    }
+    .pause .label { color: var(--signal); font-weight: 600; font-size: var(--step-0-5); }
+    .pause p { margin: 0; max-width: var(--measure); }
+    .pause .btns { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .btn {
+      font: inherit; font-weight: 600; font-size: 0.9rem;
+      padding: 0.6rem 1.2rem; cursor: pointer;
+      border: 1px solid var(--hairline); background: #fff; color: var(--ink);
+    }
+    .btn.hot { background: var(--signal); border-color: var(--signal); color: #fff; }
+    .btn.quiet { background: transparent; color: var(--muted); }
+    .btn:hover { border-color: var(--ink); }
+
+    /* ============ Footer ============ */
+    footer.site {
+      border-top: 1px solid var(--hairline);
+      padding: 2rem var(--pad);
+      color: var(--muted);
+      font-size: var(--step-0-5);
+      text-align: left;
+      max-width: 68rem;
+      margin: 0 auto;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ruler::after, .hero h1 .lock::after { animation: none; }
+      .ruler::after { left: 8%; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site">
+    <div class="bar">
+      <div class="brand">MediAssist AI <small>clinical decision support</small></div>
+      <nav class="site" aria-label="Page">
+        <a href="#flow">How it reads</a>
+        <a href="#verify">Verification</a>
+        <a href="#defer">Who decides</a>
+        <a href="#demo">Live demo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO: the one risk -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="ruler" aria-hidden="true"></div>
+      <div class="wrap">
+        <h1 id="hero-title">It reads from your records, and it <span class="lock">asks</span> before it acts.</h1>
+        <p class="lede">
+          <strong>MediAssist AI</strong> answers from your own files — error codes, PDF contracts,
+          support manuals — and predicts an outcome with a confidence score.
+          When the action is dangerous, it stops and waits.
+        </p>
+        <div class="herspec" aria-label="Attributes">
+          <span><i class="dot"></i>retrieves from your documents</span>
+          <span><i class="dot"></i>scores every answer</span>
+          <span><i class="dot"></i>never acts without approval</span>
+        </div>
+        <a class="act" href="#demo">Open the instrument <span class="cd">→</span></a>
+
+        <!-- The instrument: a real, live-looking prediction readout -->
+        <div class="panel" id="demo">
+          <div class="panel-head">
+            <span class="pulse"><i class="led" aria-hidden="true"></i> predicting from 8 recent interactions</span>
+            <span>xgboost model · v4.2</span>
+          </div>
+          <div class="measure">
+            <table>
+              <caption class="sr-only">Prediction output for client B-114</caption>
+              <thead>
+                <tr><th scope="col">signal</th><th scope="col">value</th><th scope="col">weight</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>logins / week</td><td>3.4</td><td class="score">0.32</td></tr>
+                <tr><td>erp orders / mo</td><td>7</td><td class="score">0.27</td></tr>
+                <tr><td>support tickets</td><td>2</td><td class="score">0.18</td></tr>
+                <tr><td>time since signup</td><td>14 mo</td><td class="score">0.23</td></tr>
+              </tbody>
+            </table>
+            <div class="gauge">
+              <div class="ring" style="--p:0.72"><div class="face">72%</div></div>
+              <small>confidence · will subscribe</small>
+            </div>
+          </div>
+          <div class="note">
+            <span class="tag">model output</span>
+            <span>Predicted to subscribe at <strong>72% confidence</strong>. This is a recommendation for a human to review — the system logged the input, output, model version, and who is viewing it.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT READS -->
+    <section id="flow" aria-labelledby="flow-title">
+      <div class="wrap">
+        <p class="kicker">How it reads</p>
+        <h2 class="sect" id="flow-title">Three steps, and each one can be checked.</h2>
+        <div class="flow">
+          <div class="step">
+            <div>
+              <h3>Retrieve, then grade what it found</h3>
+              <p>Hybrid search pulls the closest matching passages. A grading pass throws out anything not firmly grounded in the source — a weak document never reaches your screen.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h3>Answer with a score attached</h3>
+              <p>Every answer ships with the passages it used and a confidence value. No silent guesswork: you can tell how sure it is before you trust it.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div>
+              <h3>Pause on the dangerous parts</h3>
+              <p>Deleting an order, issuing a refund, sharing a record — <span class="wt">these wait for a human</span>. The graph stops, holds state, and resumes only on your approval or refusal.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VERIFICATION -->
+    <section id="verify" aria-labelledby="verify-title">
+      <div class="wrap">
+        <p class="kicker">Verification</p>
+        <h2 class="sect" id="verify-title">Every claim is a link back to the source.</h2>
+        <p class="body">Ask about an error code and you get the answer <strong>plus the passage it came from</strong>, so a clinician can confirm before acting on it.</p>
+        <div class="cite">
+          <div class="row">
+            <span class="src">1</span>
+            <p><b>Error Code 4012</b> — payment transaction declined by the processor. Common causes include card limits, expired credentials, or network timeout.</p>
+          </div>
+          <div class="row">
+            <span class="src">2</span>
+            <p>Retry window: automatic retry after 30&nbsp;seconds. If it fails twice, escalate to a manual review queue.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHO DECIDES -->
+    <section id="defer" aria-labelledby="defer-title">
+      <div class="wrap">
+        <p class="kicker">Who decides</p>
+        <h2 class="sect" id="defer-title">The model proposes. You dispose.</h2>
+        <p class="body">The whole design works around one rule: <strong>automation up to the point of risk, never past it.</strong></p>
+        <div class="pause">
+          <div class="label">approval paused — awaiting a human</div>
+          <p>The system wants to <strong>delete all orders from client B-114</strong> (14 orders) based on a prediction. This is staged and held until an admin or expert reviews it. Nothing is executed automatically.</p>
+          <div class="btns">
+            <button class="btn hot" type="button" data-op="approve">Approve</button>
+            <button class="btn quiet" type="button" data-op="deny">Refuse</button>
+          </div>
+          <p id="pause-out" role="status" aria-live="polite" style="color:var(--muted);font-size:var(--step-0-5);margin:0;"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <p>MediAssist AI — every answer verified, every risk approved. <span class="sr-only">Designed as a portfolio project.</span></p>
+  </footer>
+
+  <script>
+    /* Gauge sweep on first view: animates the conic ring to its reading.
+       Runs once when the hero instrument enters the viewport.        */
+    (function () {
+      var ring = document.querySelector('.ring');
+      if (!ring) return;
+      var target = 72; // percent — matches the reading in the copy
+      var shown = false;
+      var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function draw() {
+        // cap conic at target with a tiny ease
+        var t = Math.min(target * 0.92, 66.24); // 0.72 * 92 = 66.24
+        ring.style.background =
+          'conic-gradient(var(--amber) 0 ' + t + '%, var(--hairline) ' + t + '% 100%)';
+        shown = true;
+      }
+
+      function once(entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting && !shown) { draw(); }
+        });
+      }
+
+      if (reduce) { draw(); }
+      else {
+        var io = new IntersectionObserver(once, { threshold: 0.4 });
+        io.observe(ring);
+      }
+
+      /* The HITL pause — a real interactive demonstration */
+      var out = document.getElementById('pause-out');
+      document.querySelectorAll('[data-op]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var op = btn.getAttribute('data-op');
+          if (op === 'approve') {
+            out.textContent = 'Approved by you. The action ran, and the whole exchange was logged to the audit trail.';
+            out.style.color = 'var(--ink)';
+          } else {
+            out.textContent = 'Refused. The action was not executed — the record is returned untouched.';
+            out.style.color = 'var(--ink)';
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

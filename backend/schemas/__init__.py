@@ -12,6 +12,7 @@
 from schemas.audit import AuditResponse
 from schemas.document import DocumentResponse
 from schemas.prediction import PredictionCreate, PredictionResponse, PredictionReview
+from schemas.stats import StatsResponse, LabelCount
 from schemas.user import UserCreate, UserResponse, UserUpdate
 
 __all__ = [
@@ -23,4 +24,6 @@ __all__ = [
     "PredictionResponse",
     "PredictionReview",
     "AuditResponse",
+    "StatsResponse",
+    "LabelCount",
 ]

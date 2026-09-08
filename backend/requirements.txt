@@ -51,11 +51,16 @@ python-jose[cryptography]==3.3.0  # JWT encode/decode (HS256)
 passlib[bcrypt]==1.7.4           # Password hashing (bcrypt)
 bcrypt==4.2.1                    # bcrypt backend for passlib
 
-# --- Observability / tracing (Phase 7) ---
-# NOTE: arize-phoenix-otel added in Phase 7. The correct package name is
-# "arize-phoenix-otel" (NOT "a-phoenix-otel"). Deliberately deferred to
-# keep this install lean on our 15GB machine.
+# --- Observability / tracing (Phase 7, Step 4) ---
+# NOTE: we wire OpenTelemetry BY HAND (exporter below) instead of using
+# arize-phoenix-otel's register() convenience — that package force-upgrades
+# the otel SDK (1.29→1.44) which can break the 0.50b0 instrumentors. The
+# manual wiring is ~10 lines and does the identical job.
 opentelemetry-api==1.29.0        # OpenTelemetry API (spans/traces)
 opentelemetry-sdk==1.29.0        # OpenTelemetry implementation
+opentelemetry-exporter-otlp-proto-http==1.29.0  # ships spans to Phoenix over HTTP
 opentelemetry-instrumentation-fastapi==0.50b0  # Auto-instrument FastAPI endpoints
 opentelemetry-instrumentation-httpx==0.50b0    # Auto-instrument HTTP calls (to Ollama/Qdrant)
+
+# --- Testing (Phase 9 — CI/CD) ---
+pytest==8.3.4                  # Deterministic test runner (CI gate, headless)

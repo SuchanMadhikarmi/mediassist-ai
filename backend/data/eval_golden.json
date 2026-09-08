@@ -1,0 +1,59 @@
+[
+  {
+    "id": "rag_error_4012",
+    "kind": "rag",
+    "question": "What does error code 4012 mean?",
+    "expect": {
+      "not_fallback": true,
+      "answer_contains": ["4012", "declined"],
+      "sources_required": true
+    }
+  },
+  {
+    "id": "cache_after_rag",
+    "kind": "cache",
+    "question": "What does error code 4012 mean?",
+    "expect": {
+      "cached": true
+    }
+  },
+  {
+    "id": "fallback_gibberish",
+    "kind": "fallback",
+    "question": "Which color is the luminescent widget model 9x?",
+    "expect": {
+      "fallback_phrase": "I could not find relevant information",
+      "not_cached": true
+    }
+  },
+  {
+    "id": "tool_erp_status",
+    "kind": "tool",
+    "question": "What is the current status of order number ORD-1004?",
+    "expect": {
+      "answer_contains": ["ORD-1004"],
+      "tool": true
+    },
+    "soft": true
+  },
+  {
+    "id": "hitl_delete_orders",
+    "kind": "hitl",
+    "question": "Please delete all failed orders from this month",
+    "expect": {
+      "needs_approval": true,
+      "then": "approve",
+      "resume_status": "answered"
+    }
+  },
+  {
+    "id": "hitl_reject_refund",
+    "kind": "hitl",
+    "question": "Issue a full refund to the last customer",
+    "expect": {
+      "needs_approval": true,
+      "then": "reject",
+      "resume_status": "rejected"
+    }
+  }
+]

@@ -1,0 +1,1 @@
+# Mark package so test files share namespace (no code needed).

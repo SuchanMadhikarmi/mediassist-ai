@@ -8,6 +8,7 @@
 
 from models.audit_log import AuditLog
 from models.document import Document
+from models.erp_order import ErpOrder
 from models.model_registry import ModelRegistry
 from models.prediction import Prediction
 from models.user import User
@@ -18,4 +19,5 @@ __all__ = [
     "Prediction",
     "AuditLog",
     "ModelRegistry",
+    "ErpOrder",
 ]

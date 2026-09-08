@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     retrieval_candidates: int = 20
     rerank_top_k: int = 5
 
+    # --- LLMOps Router (Phase 7, Step 3) ---
+    # A/B routing: simple vs complex queries pick a different model.
+    routing_complexity_threshold: float = 6.0  # route to smart model above this
+
+    # Circuit breaker: count consecutive failures before "opening" the circuit.
+    breaker_failure_threshold: int = 3    # failures before OPEN
+    breaker_cooldown_seconds: float = 30.0  # wait before HALF-OPEN probe
+
 
 # A single, app-wide settings instance. Import it anywhere:
 #     from config import settings
