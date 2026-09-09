@@ -1,5 +1,9 @@
 # MediAssist AI
 
+> **Everything in this repo is a learning artifact** — every layer is explained in `Docs/`
+> with the *why* behind each decision. Built to show how a real AI product ships end to end:
+> retrieval, generation, security, deployment, monitoring, and human oversight.
+
 A **multi-tier, AI-powered clinical support platform** built 100% on free
 and open-source software. Staff ask questions about product manuals and
 error codes in plain English, get **cited, streamed answers** powered by
@@ -10,8 +14,24 @@ premium service, with every prediction logged for the audit trail.
 Built as a university **Track B** portfolio project — the "boring 80%"
 (reusable PostgreSQL + RBAC + CRUD foundation) plus the AI 20%.
 
-> Everything in this repo is a **learning artifact**: every layer is
-> explained in `Docs/` with the *why* behind each decision.
+---
+
+## What this project teaches you
+
+This is a **Forward Deployed Engineering (FDE) starter kit**: not just a model,
+but the entire system around it that a client would actually use in production.
+
+| If you're a… | You'll learn how to… |
+|---|---|
+| **AI/ML engineer** | build RAG + CRAG, cite sources, grade retrieval & faithfulness, log every prediction |
+| **Full-stack dev** | wire React → FastAPI → PostgreSQL/Qdrant/RBAC, stream SSE tokens to the browser |
+| **DevOps engineer** | containerize with Compose (Postgres, Qdrant, Phoenix), add CI/CD, trace every request |
+| **Student** | assemble a complete, viva-ready portfolio with 3-tier architecture + RDBMS + ML baseline |
+
+**Key concepts you'll actually be able to explain:** hybrid search + RRF,
+cross-encoder re-ranking, corrective RAG, human-in-the-loop checkpoints,
+JWT + data-level RBAC, SMOTE + class-imbalance handling, LLM-as-a-judge,
+semantic caching, circuit breakers, and OpenTelemetry tracing.
 
 ---
 
