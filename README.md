@@ -86,6 +86,9 @@ npm install
 npm run dev                   # UI on :5173 (proxies /api /chat to :8000)
 ```
 
+**Visual overview:** open [`landing/index.html`](landing/index.html) in any
+browser — a standalone product page explaining what the system does.
+
 Open http://localhost:5173 and log in with one of the demo accounts:
 
 | Role | Username | Password |
