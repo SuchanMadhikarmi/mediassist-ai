@@ -86,7 +86,9 @@ npm install
 npm run dev                   # UI on :5173 (proxies /api /chat to :8000)
 ```
 
-Open http://localhost:5173 and log in with one of the demo accounts:
+With the dev servers running, open the app in your browser
+(`http://localhost:5173` — a local URL on *your* machine) and log in with
+one of the demo accounts:
 
 | Role | Username | Password |
 |------|----------|----------|
